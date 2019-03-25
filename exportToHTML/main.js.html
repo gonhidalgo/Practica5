@@ -1,0 +1,127 @@
+<html>
+<head>
+<title>main.js</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000080; font-weight: bold;}
+.s1 { color: #000000;}
+.s2 { color: #008000; font-weight: bold;}
+.s3 { color: #808080; font-style: italic;}
+.s4 { color: #0000ff;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+main.js</font>
+</center></td></tr></table>
+<pre><span class="s0">const </span>readline = require(<span class="s2">'readline'</span>);
+
+<span class="s0">const </span>{log, biglog, errorlog, colorize} = require(<span class="s2">&quot;./out&quot;</span>);
+
+<span class="s0">const </span>cmds = require(<span class="s2">&quot;./cmds&quot;</span>);
+
+<span class="s0">const </span>net = require(<span class="s2">&quot;net&quot;</span>);
+
+net.createServer(socket =&gt; {
+
+    console.log(<span class="s2">&quot;Se ha conectado un cliente desde &quot; </span>+ socket.remoteAddress);
+
+    <span class="s3">// Mensaje inicial</span>
+    biglog(socket, <span class="s2">'CORE Quiz'</span>, <span class="s2">'green'</span>);
+
+    <span class="s0">const </span>rl = readline.createInterface({
+        input: socket,
+        output: socket,
+        prompt: colorize(<span class="s2">&quot;quiz &gt; &quot;</span>, <span class="s2">'blue'</span>),
+        completer: (line) =&gt; {
+            <span class="s0">const </span>completions = <span class="s2">'h help add delete edit list test p play credits q quit'</span>.split(<span class="s2">' '</span>);
+            <span class="s0">const </span>hits = completions.filter((c) =&gt; c.startsWith(line));
+            <span class="s3">// show all completions if none found</span>
+            <span class="s0">return </span>[hits.length ? hits : completions, line];
+        }
+    });
+
+    socket
+    .on(<span class="s2">&quot;end&quot; </span>, () =&gt; {rl.close(); })
+    .on(<span class="s2">&quot;end&quot; </span>, () =&gt; {rl.close(); });
+    rl.prompt();
+
+    rl
+        .on(<span class="s2">'line'</span>, (line) =&gt; {
+
+            <span class="s0">let </span>args = line.split(<span class="s2">&quot; &quot;</span>);
+            <span class="s0">let </span>cmd = args[<span class="s4">0</span>].toLowerCase().trim();
+
+            <span class="s0">switch </span>(cmd) {
+                <span class="s0">case </span><span class="s2">''</span>:
+                    rl.prompt();
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'help'</span>:
+                <span class="s0">case </span><span class="s2">'h'</span>:
+                    cmds.helpCmd(socket,rl);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'quit'</span>:
+                <span class="s0">case </span><span class="s2">'q'</span>:
+                    cmds.quitCmd(socket,rl);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'add'</span>:
+                    cmds.addCmd(socket,rl);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'list'</span>:
+                    cmds.listCmd(socket,rl);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'show'</span>:
+                    cmds.showCmd(socket,rl, args[<span class="s4">1</span>]);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'test'</span>:
+                    cmds.testCmd(socket, rl, args[<span class="s4">1</span>]);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'play'</span>:
+                <span class="s0">case </span><span class="s2">'p'</span>:
+                    cmds.playCmd(socket,rl);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'delete'</span>:
+                    cmds.deleteCmd(socket,rl, args[<span class="s4">1</span>]);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'edit'</span>:
+                    cmds.editCmd(socket,rl, args[<span class="s4">1</span>]);
+                    <span class="s0">break</span>;
+
+                <span class="s0">case </span><span class="s2">'credits'</span>:
+                    cmds.creditsCmd(socket,rl);
+                    <span class="s0">break</span>;
+
+                <span class="s0">default</span>:
+                    log(socket,<span class="s2">`Comando desconocido: '</span>${colorize(cmd, <span class="s2">'red'</span>)}<span class="s2">'`</span>);
+                    log(socket,<span class="s2">`Use </span>${colorize(<span class="s2">'help'</span>, <span class="s2">'green'</span>)} <span class="s2">para ver todos los comandos disponibles.`</span>);
+                    rl.prompt();
+                    <span class="s0">break</span>;
+            }
+        })
+        .on(<span class="s2">'close'</span>, () =&gt; {
+            log(socket,<span class="s2">'Adios!'</span>);
+            <span class="s3">//process.exit(0);</span>
+        });
+
+})
+
+.listen(<span class="s4">3030</span>);
+
+
+
+
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<html>
+<head>
+<title>cmds.js</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000000;}
+.s1 { color: #000080; font-weight: bold;}
+.s2 { color: #008000; font-weight: bold;}
+.s3 { color: #808080; font-style: italic;}
+.s4 { color: #808080; font-weight: bold; font-style: italic;}
+.s5 { color: #0000ff;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+cmds.js</font>
+</center></td></tr></table>
+<pre>
+<span class="s1">const </span>Sequelize = require(<span class="s2">'sequelize'</span>);
+<span class="s1">const </span>{log, biglog, errorlog, colorize} = require(<span class="s2">&quot;./out&quot;</span>);
+
+<span class="s1">const </span>{models} = require(<span class="s2">'./model'</span>);
+
+
+<span class="s3">/**</span>
+ * Muestra la ayuda.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ */
+exports.helpCmd = (socket,rl) =&gt; {
+    log(socket,<span class="s2">&quot;Commandos:&quot;</span>);
+    log(socket,<span class="s2">&quot;  h|help - Muestra esta ayuda.&quot;</span>);
+    log(socket,<span class="s2">&quot;  list - Listar los quizzes existentes.&quot;</span>);
+    log(socket,<span class="s2">&quot;  show &lt;id&gt; - Muestra la pregunta y la respuesta el quiz indicado.&quot;</span>);
+    log(socket,<span class="s2">&quot;  add - Añadir un nuevo quiz interactivamente.&quot;</span>);
+    log(socket,<span class="s2">&quot;  delete &lt;id&gt; - Borrar el quiz indicado.&quot;</span>);
+    log(socket,<span class="s2">&quot;  edit &lt;id&gt; - Editar el quiz indicado.&quot;</span>);
+    log(socket,<span class="s2">&quot;  test &lt;id&gt; - Probar el quiz indicado.&quot;</span>);
+    log(socket,<span class="s2">&quot;  p|play - Jugar a preguntar aleatoriamente todos los quizzes.&quot;</span>);
+    log(socket,<span class="s2">&quot;  credits - Créditos.&quot;</span>);
+    log(socket,<span class="s2">&quot;  q|quit - Salir del programa.&quot;</span>);
+    rl.prompt();
+};
+
+
+<span class="s3">/**</span>
+ * Lista todos los quizzes existentes en el modelo.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ */
+exports.listCmd = (socket,rl) =&gt; {
+
+
+    models.quiz.findAll()
+        .then(quizzes =&gt; {
+            quizzes.forEach(quiz =&gt;{
+                log(socket,<span class="s2">`[</span>${colorize(quiz.id, <span class="s2">'magenta'</span>)}<span class="s2">]: </span>${quiz.question}<span class="s2">`</span>);
+            });
+        })
+        .catch(error =&gt;{
+            errorlog(socket,error.message);
+        })
+        .then(() =&gt;{
+            rl.prompt();
+        });
+
+
+};
+
+
+
+
+<span class="s3">/**</span>
+ * Esta función devuelve una promesa que:
+ *  -Valida que se ha introducido un valor para el parámetro.
+ *  -Convierte el parámetro en un número entero
+ *  Si todo va bien, la promesa se satisface y devuelve el valor de d a usar.*/
+
+  <span class="s1">const </span>validateId = id =&gt; {
+      <span class="s1">return new </span>Promise((resolve, reject) =&gt; {
+          <span class="s1">if </span>(<span class="s1">typeof </span>id === <span class="s2">&quot;undefined&quot; </span>){
+              reject(<span class="s1">new </span>Error(<span class="s2">`Falta el parámetro &lt;id&gt;.`</span>));
+          }<span class="s1">else</span>{
+              id = parseInt(id);  <span class="s3">// coger la parte entera y descartar lo demás</span>
+              <span class="s1">if </span>(Number.isNaN(id)){
+                  reject(<span class="s1">new </span>Error(<span class="s2">`El valor del parámetro &lt;id&gt; no es un número.`</span>));
+              }<span class="s1">else</span>{
+                  resolve(id);
+              }
+          }
+      });
+};
+
+
+ <span class="s3">/**</span>
+  * Muestra el quiza indicado
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ * <span class="s4">@param </span><span class="s3">id Clave del quiz a mostrar.</span>
+ */
+exports.showCmd = (socket,rl, id) =&gt; {
+    validateId (id)
+        .then(id=&gt; models.quiz.findById(id))
+        .then(quiz=&gt;{
+            <span class="s1">if</span>(!quiz){
+                <span class="s1">throw new </span>Error( <span class="s2">`No existe un quiz asociado al id=</span>${id}<span class="s2">.`</span>);
+            }
+            log(socket,<span class="s2">`[</span>${colorize(quiz.id, <span class="s2">'magenta'</span>)}<span class="s2">]: </span>${quiz.question} ${colorize(<span class="s2">'=&gt;'</span>, <span class="s2">'magenta'</span>)} ${quiz.answer}<span class="s2">`</span>);
+        })
+        .catch(error =&gt;{
+            errorlog(socket,error.message);
+        })
+        .then(()=&gt; {
+            rl.prompt();
+        });
+};
+
+<span class="s1">const </span>makeQuestion = (rl, text) =&gt; {
+    <span class="s1">return new </span>Sequelize.Promise((resolve, reject) =&gt; {
+        rl.question(colorize(text, <span class="s2">'red'</span>), answer =&gt; {
+          resolve(answer.trim());
+        });
+    });
+};
+
+<span class="s3">/**</span>
+ * Añade un nuevo quiz al módelo.
+ * Pregunta interactivamente por la pregunta y por la respuesta.
+ *
+ * Hay que recordar que el funcionamiento de la funcion rl.question es asíncrono.
+ * El prompt hay que sacarlo cuando ya se ha terminado la interacción con el usuario,
+ * es decir, la llamada a rl.prompt() se debe hacer en la callback de la segunda
+ * llamada a rl.question.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ */
+exports.addCmd = (socket,rl) =&gt; {
+
+   makeQuestion(rl, <span class="s2">'Introduzca una pregunta: '</span>)
+       .then(q =&gt; {
+           <span class="s1">return </span>makeQuestion(rl, <span class="s2">'Introduzca la respuesta: '</span>)
+               .then(a =&gt; {
+                   <span class="s1">return </span>{question: q, answer: a};
+               });
+       })
+       .then(quiz =&gt; {
+           <span class="s1">return </span>models.quiz.create(quiz);
+       })
+       .then((quiz) =&gt; {
+           log(socket,<span class="s2">`</span>${colorize(<span class="s2">'Se ha añadido'</span>, <span class="s2">'magenta'</span>)}<span class="s2">: </span>${quiz.question} ${colorize(<span class="s2">'=&gt;'</span>, <span class="s2">'magenta'</span>)} ${quiz.answer}<span class="s2">`</span>);
+       })
+       .catch(Sequelize.ValidationError, error =&gt; {
+           errorlog(socket,<span class="s2">'El quiz es erróneo:'</span>);
+           error.errors.forEach(({message}) =&gt;  errorlog(message));
+       })
+       .catch(error =&gt; {
+           errorlog(socket,error.message);
+       })
+       .then(() =&gt; {
+           rl.prompt();
+       });
+};
+
+
+<span class="s3">/**</span>
+ * Borra un quiz del modelo.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ * <span class="s4">@param </span><span class="s3">id Clave del quiz a borrar en el modelo.</span>
+ */
+exports.deleteCmd = (socket,rl, id) =&gt; {
+    validateId(id)
+        .then(id =&gt; models.quiz.destroy({where: {id}}))
+        .catch(error =&gt; {
+            errorlog(socket,error.message);
+        })
+        .then(() =&gt; {
+            rl.prompt();
+        });
+};
+
+
+<span class="s3">/**</span>
+ * Edita un quiz del modelo.
+ *
+ * Hay que recordar que el funcionamiento de la funcion rl.question es asíncrono.
+ * El prompt hay que sacarlo cuando ya se ha terminado la interacción con el usuario,
+ * es decir, la llamada a rl.prompt() se debe hacer en la callback de la segunda
+ * llamada a rl.question.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ * <span class="s4">@param </span><span class="s3">id Clave del quiz a editar en el modelo.</span>
+ */
+exports.editCmd = (socket,rl, id) =&gt; {
+    validateId(id)
+        .then(id =&gt; models.quiz.findById(id))
+        .then(quiz =&gt; {
+            <span class="s1">if </span>(!quiz){
+                <span class="s1">throw new </span>Error(<span class="s2">`No existe un quiz asociado al id= </span>${id}<span class="s2">.`</span>);
+            }
+
+            process.stdout.isTTY &amp;&amp; setTimeout(() =&gt; {rl.write(quiz.question)}, <span class="s5">0</span>);
+            <span class="s1">return </span>makeQuestion(rl, <span class="s2">'Introduzca la pregunta : '</span>)
+                .then(q =&gt; {
+                    process.stdout.isTTY &amp;&amp; setTimeout(() =&gt; {rl.write(quiz.answer)}, <span class="s5">0</span>);
+                    <span class="s1">return </span>makeQuestion( rl, <span class="s2">'Introduzca la respuesta: '</span>)
+                        .then(a =&gt; {
+                            quiz.question = q;
+                            quiz.question = a;
+                            <span class="s1">return </span>quiz;
+                        });
+                });
+        })
+        .then(quiz =&gt; {
+            <span class="s1">return </span>quiz.save();
+        })
+        .then(quiz =&gt; {
+            log(socket,<span class="s2">`Se ha cambiado el quiz </span>${colorize(quiz.id, <span class="s2">'magenta'</span>)} <span class="s2">por: </span>${quiz.question} ${colorize(<span class="s2">'=&gt;'</span>, <span class="s2">'magenta'</span>)} ${quiz.answer}<span class="s2">`</span>);
+
+        })
+        .catch(error =&gt; {
+            errorlog(socket,error.message);
+        })
+        .then(() =&gt; {
+            rl.prompt();
+        });
+};
+
+
+<span class="s3">/**</span>
+ * Prueba un quiz, es decir, hace una pregunta del modelo a la que debemos contestar.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ * <span class="s4">@param </span><span class="s3">id Clave del quiz a probar.</span>
+ */
+exports.testCmd = (socket,rl, id) =&gt; {
+    validateId(id)
+        .then(id =&gt; models.quiz.findById(id))
+        .then(quiz =&gt; {
+            <span class="s1">if </span>(!quiz) {
+                <span class="s1">throw new </span>Error(<span class="s2">`No existe un quiz asociado al id= </span>${id}<span class="s2">.`</span>);
+            }
+            <span class="s1">return </span>makeQuestion(rl, <span class="s2">`</span>${quiz.question}<span class="s2">? `</span>)
+                    .then(a =&gt; {
+                    <span class="s1">if </span>(a.toLocaleLowerCase().trim() === quiz.answer.toLocaleLowerCase()) {
+                        log(socket,<span class="s2">'Su respuesta es correcta.'</span>);
+                        biglog(socket,<span class="s2">'Correcta'</span>, <span class="s2">'green'</span>);
+                    } <span class="s1">else </span>{
+                        log(socket,<span class="s2">'Su respuesta es incorrecta.'</span>);
+                        biglog(socket,<span class="s2">'Incorrecta'</span>, <span class="s2">'green'</span>);
+                    }
+                });
+        })
+        .catch(error =&gt; {
+            errorlog(socket, error.message);
+        })
+        .then(() =&gt; {
+            rl.prompt();
+        });
+}
+
+<span class="s3">/**</span>
+ * Pregunta todos los quizzes existentes en el modelo en orden aleatorio.
+ * Se gana si se contesta a todos satisfactoriamente.
+ *
+ * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+ */
+exports.playCmd = (socket,rl) =&gt; {
+    <span class="s1">let </span>numCorrectos = <span class="s5">0</span>;
+    <span class="s1">let </span>left = [];
+    models.quiz.findAll()
+        .then(quizzes =&gt; {
+            quizzes.forEach(quiz =&gt; {
+                left.push(quiz);
+            });
+            <span class="s1">const </span>runOne = () =&gt; {
+                <span class="s1">if </span>(left.length == <span class="s5">0</span>) {
+                    log(socket,<span class="s2">'No hay nada más que preguntar.'</span>, <span class="s2">'green'</span>);
+                    log(socket,<span class="s2">'Fin del juego. Aciertos:' </span>+ <span class="s2">`</span>${numCorrectos}<span class="s2">`</span>);
+                    biglog(<span class="s2">`</span>${numCorrectos}<span class="s2">`</span>, <span class="s2">'magenta'</span>);
+                    rl.prompt();
+                } <span class="s1">else </span>{
+                    <span class="s1">let </span>index = Math.floor(Math.random()*left.length);
+                    <span class="s1">let </span>randomId = left[index];
+                    <span class="s1">return </span>makeQuestion(rl, <span class="s2">`</span>${randomId.question}<span class="s2">? `</span>)
+                        .then(a =&gt; {
+                            <span class="s1">if </span>(a.toLocaleLowerCase().trim() === randomId.answer.toLocaleLowerCase().trim()) {
+                                numCorrectos = numCorrectos + <span class="s5">1</span>;
+                                left.splice(index, <span class="s5">1</span>);
+                                log(socket,<span class="s2">'CORRECTO -  Lleva ' </span>+ <span class="s2">`</span>${numCorrectos}<span class="s2">` </span>+ <span class="s2">' aciertos'</span>);
+                                runOne();
+                            } <span class="s1">else </span>{
+                                log(socket,<span class="s2">'INCORRECTO'</span>);
+                                log(socket,<span class="s2">'Fin del juego. Aciertos ' </span>+ <span class="s2">`</span>${numCorrectos}<span class="s2">`</span>);
+                                biglog(socket,<span class="s2">`</span>${numCorrectos}<span class="s2">`</span>, <span class="s2">'magenta'</span>);
+                            }
+                        })
+                        .catch(error =&gt; {
+                            errorlog(socket,error.message);
+                        })
+                        .then(() =&gt; {
+                            rl.prompt();
+                        });
+
+                }
+            }
+            runOne()
+        });
+
+    };
+    <span class="s3">///////////////////////////////////////////////////////////////////////////////////////////////////////</span>
+
+
+
+
+
+        /////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+    /**
+     * Muestra los nombres de los autores de la práctica.
+     *
+     * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+     */
+    exports.creditsCmd = (socket,rl) =&gt; {
+        log(socket,<span class="s2">'Autor de la práctica:'</span>);
+        log(socket,<span class="s2">'Gonzalo Ignacio Hidalgo García'</span>, <span class="s2">'green'</span>);
+        <span class="s3">//log('feat: Carita', 'green');</span>
+        rl.prompt();
+    };
+
+
+    <span class="s3">/**</span>
+     * Terminar el programa.
+     *
+     * <span class="s4">@param </span><span class="s3">rl Objeto readline usado para implementar el CLI.</span>
+     */
+    exports.quitCmd = (socket,rl) =&gt; {
+        rl.close();
+        socket.end();
+    };
+
+</pre>
+</body>
+</html>

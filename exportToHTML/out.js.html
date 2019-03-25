@@ -1,0 +1,82 @@
+<html>
+<head>
+<title>out.js</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000080; font-weight: bold;}
+.s1 { color: #000000;}
+.s2 { color: #008000; font-weight: bold;}
+.s3 { color: #808080; font-style: italic;}
+.s4 { color: #808080; font-weight: bold; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+out.js</font>
+</center></td></tr></table>
+<pre><span class="s0">const </span>figlet = require(<span class="s2">'figlet'</span>);
+<span class="s0">const </span>chalk = require(<span class="s2">'chalk'</span>);
+
+
+<span class="s3">/**</span>
+ * Dar color a un string.
+ *
+ * <span class="s4">@param </span><span class="s3">msg    Es string al que hay que dar color.</span>
+ * <span class="s4">@param </span><span class="s3">color  El color con el que pintar msg.</span>
+ * <span class="s4">@returns </span><span class="s3">{string} Devuelve el string msg con el color indicado.</span>
+ */
+<span class="s0">const </span>colorize = (msg, color) =&gt; {
+
+    <span class="s0">if </span>(<span class="s0">typeof </span>color !== <span class="s2">&quot;undefined&quot;</span>) {
+        msg = chalk[color].bold(msg);
+    }
+    <span class="s0">return </span>msg;
+};
+
+
+<span class="s3">/**</span>
+ * Escribe un mensaje de log.
+ *
+ * <span class="s4">@param </span><span class="s3">msg  El String a escribir</span>
+ * <span class="s4">@param </span><span class="s3">color  Color del texto.</span>
+ */
+<span class="s0">const </span>log = (socket, msg, color) =&gt; {
+
+    socket.write(colorize(msg, color) + <span class="s2">&quot;</span><span class="s0">\n</span><span class="s2">&quot;</span>);
+};
+
+
+<span class="s3">/**</span>
+ * Escribe un mensaje de log grande.
+ *
+ * <span class="s4">@param </span><span class="s3">msg    Texto a escribir.</span>
+ * <span class="s4">@param </span><span class="s3">color  Color del texto.</span>
+ */
+<span class="s0">const </span>biglog = (socket, msg, color) =&gt; {
+
+    log(socket, figlet.textSync(msg, { horizontalLayout: <span class="s2">'full' </span>}), color);
+};
+
+
+<span class="s3">/**</span>
+ * Escribe el mensaje de error emsg.
+ *
+ * <span class="s4">@param </span><span class="s3">emsg Texto del mensaje de error.</span>
+ */
+<span class="s0">const </span>errorlog = (socket, emsg) =&gt; {
+
+    socket.write(<span class="s2">`</span>${colorize(<span class="s2">&quot;Error&quot;</span>, <span class="s2">&quot;red&quot;</span>)}<span class="s2">: </span>${colorize(colorize(emsg, <span class="s2">&quot;red&quot;</span>), <span class="s2">&quot;bgYellowBright&quot;</span>)}<span class="s0">\n</span><span class="s2">`</span>);
+};
+
+
+exports = module.exports = {
+    colorize,
+    log,
+    biglog,
+    errorlog
+};
+</pre>
+</body>
+</html>
